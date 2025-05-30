@@ -1,6 +1,6 @@
 # 🎨 Color Blindness Simulator
 
-A web-based accessibility tool that simulates how images appear to people with various types of color vision deficiencies. Upload an image, apply filters, compare side-by-side, zoom in, and download the results — individually or as a complete ZIP package with metadata.
+A web-based accessibility tool that simulates how images appear to people with various types of color vision deficiencies. Upload an image, apply filters, compare side-by-side, zoom in, and download the results individually or as a complete ZIP package with metadata.
 
 ## 🚀 Features
 
@@ -33,10 +33,9 @@ Upload an image and select a filter from the dropdown to instantly preview how i
 
 ## 📁 Project Structure
 
-├── index.html # Main application page
-├── app.js # Image processing and interaction logic
-├── styles.css # Custom styling on top of Tailwind
-
+- `index.html` – Main application page  
+- `app.js` – Image processing and interaction logic  
+- `styles.css` – Custom styling on top of Tailwind  
 
 ## 🎯 Purpose
 
