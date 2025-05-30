@@ -8,85 +8,112 @@ const filters = {
   achromatopsia: [[0.299, 0.587, 0.114], [0.299, 0.587, 0.114], [0.299, 0.587, 0.114]],
 };
 
-let originalFileName = "image";
+const elements = {
+  dropZone: document.getElementById("dropZone"),
+  imageInput: document.getElementById("imageInput"),
+  originalCanvas: document.getElementById("originalCanvas"),
+  simulatedCanvas: document.getElementById("simulatedCanvas"),
+  filterSelect: document.getElementById("filterSelect"),
+  downloadBtn: document.getElementById("downloadBtn"),
+  downloadAllBtn: document.getElementById("downloadAllBtn"),
+  zoomModal: document.getElementById("zoomModal"),
+  zoomImage: document.getElementById("zoomImage"),
+  filterDescription: document.getElementById("filterDescription")
+};
+
 let image = new Image();
+let originalFileName = "image";
 
-const dropZone = document.getElementById("dropZone");
-const imageInput = document.getElementById("imageInput");
-const originalCanvas = document.getElementById("originalCanvas");
-const simulatedCanvas = document.getElementById("simulatedCanvas");
-const filterSelect = document.getElementById("filterSelect");
-const downloadBtn = document.getElementById("downloadBtn");
-const downloadAllBtn = document.getElementById("downloadAllBtn");
-const zoomModal = document.getElementById("zoomModal");
-const zoomImage = document.getElementById("zoomImage");
+const originalCtx = elements.originalCanvas.getContext("2d");
+const simulatedCtx = elements.simulatedCanvas.getContext("2d");
 
-const originalCtx = originalCanvas.getContext("2d");
-const simulatedCtx = simulatedCanvas.getContext("2d");
-
-dropZone.addEventListener("click", () => imageInput.click());
-dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("bg-gray-200"); });
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("bg-gray-200"));
-dropZone.addEventListener("drop", (e) => {
+// Image Handling
+elements.dropZone.addEventListener("click", () => elements.imageInput.click());
+elements.dropZone.addEventListener("dragover", (e) => {
   e.preventDefault();
-  dropZone.classList.remove("bg-gray-200");
-  handleFile(e.dataTransfer.files[0]);
+  elements.dropZone.classList.add("bg-gray-200");
 });
-imageInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
+elements.dropZone.addEventListener("dragleave", () => {
+  elements.dropZone.classList.remove("bg-gray-200");
+});
+elements.dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  elements.dropZone.classList.remove("bg-gray-200");
+  const file = e.dataTransfer.files[0];
+  if (file) handleImageFile(file);
+});
+elements.imageInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) handleImageFile(file);
+});
 
-function handleFile(file) {
-  if (!file || !file.type.startsWith("image")) return;
+function handleImageFile(file) {
+  if (!file.type.startsWith("image")) return;
   originalFileName = file.name.split(".")[0];
   const reader = new FileReader();
-  reader.onload = (event) => {
+
+  reader.onload = (e) => {
     image.onload = () => {
-      originalCanvas.width = simulatedCanvas.width = image.width;
-      originalCanvas.height = simulatedCanvas.height = image.height;
+      const { width, height } = image;
+      [elements.originalCanvas, elements.simulatedCanvas].forEach((canvas) => {
+        canvas.width = width;
+        canvas.height = height;
+      });
       originalCtx.drawImage(image, 0, 0);
       applyFilter();
     };
-    image.src = event.target.result;
+    image.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-filterSelect.addEventListener("change", applyFilter);
+// Filter Application
+elements.filterSelect.addEventListener("change", applyFilter);
 
 function applyFilter() {
   if (!image.src) return;
+
   simulatedCtx.drawImage(image, 0, 0);
   const imageData = simulatedCtx.getImageData(0, 0, simulatedCanvas.width, simulatedCanvas.height);
   const data = imageData.data;
-  const matrix = filters[filterSelect.value];
+  const matrix = filters[elements.filterSelect.value];
+
   if (!matrix) return;
+
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    data[i] = r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2];
+    const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+    data[i]     = r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2];
     data[i + 1] = r * matrix[1][0] + g * matrix[1][1] + b * matrix[1][2];
     data[i + 2] = r * matrix[2][0] + g * matrix[2][1] + b * matrix[2][2];
   }
+
   simulatedCtx.putImageData(imageData, 0, 0);
 }
 
+// Zoom
 document.querySelectorAll("[data-zoom]").forEach(btn => {
   btn.addEventListener("click", () => {
-    const canvas = btn.dataset.zoom === "original" ? originalCanvas : simulatedCanvas;
-    zoomImage.src = canvas.toDataURL();
-    zoomModal.classList.remove("hidden");
+    const target = btn.dataset.zoom === "original" ? elements.originalCanvas : elements.simulatedCanvas;
+    elements.zoomImage.src = target.toDataURL();
+    elements.zoomModal.classList.remove("hidden");
   });
 });
-zoomModal.addEventListener("click", () => zoomModal.classList.add("hidden"));
+elements.zoomModal.addEventListener("click", () => {
+  elements.zoomModal.classList.add("hidden");
+});
 
-downloadBtn.addEventListener("click", () => {
-  const type = filterSelect.value || "original";
+// Download Buttons
+elements.downloadBtn.addEventListener("click", () => {
+  const filter = elements.filterSelect.value || "original";
   const link = document.createElement("a");
-  link.download = `${originalFileName}-${type}.png`;
-  link.href = simulatedCanvas.toDataURL();
+  link.download = `${originalFileName}-${filter}.png`;
+  link.href = elements.simulatedCanvas.toDataURL();
   link.click();
 });
 
-downloadAllBtn.addEventListener("click", () => {
+elements.downloadAllBtn.addEventListener("click", () => {
   if (!image.src) return;
+
   const zip = new JSZip();
   const metadata = {};
   const tempCanvas = document.createElement("canvas");
@@ -96,15 +123,17 @@ downloadAllBtn.addEventListener("click", () => {
 
   const applyMatrix = (matrix) => {
     tempCtx.drawImage(image, 0, 0);
-    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-    const data = imageData.data;
+    const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const data = imgData.data;
+
     for (let i = 0; i < data.length; i += 4) {
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      data[i] = r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2];
+      const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+      data[i]     = r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2];
       data[i + 1] = r * matrix[1][0] + g * matrix[1][1] + b * matrix[1][2];
       data[i + 2] = r * matrix[2][0] + g * matrix[2][1] + b * matrix[2][2];
     }
-    tempCtx.putImageData(imageData, 0, 0);
+
+    tempCtx.putImageData(imgData, 0, 0);
     return tempCanvas.toDataURL("image/png");
   };
 
@@ -125,6 +154,7 @@ downloadAllBtn.addEventListener("click", () => {
   });
 });
 
+// Filter Descriptions
 const filterDescriptions = {
   protanopia: "Protanopia is red-blindness. People with this condition cannot perceive red light correctly.",
   protanomaly: "Protanomaly is red-weakness. Red appears duller and more greenish.",
@@ -136,10 +166,8 @@ const filterDescriptions = {
   "": "No filter selected. Displays the image as it is."
 };
 
-const filterDescription = document.getElementById("filterDescription");
-
-filterSelect.addEventListener("change", () => {
+elements.filterSelect.addEventListener("change", () => {
   applyFilter();
-  const desc = filterDescriptions[filterSelect.value] || "Select a filter to see its description here.";
-  filterDescription.textContent = desc;
+  const desc = filterDescriptions[elements.filterSelect.value] || "Select a filter to see its description here.";
+  elements.filterDescription.textContent = desc;
 });
