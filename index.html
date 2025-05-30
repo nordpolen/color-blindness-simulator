@@ -3,145 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Simulate different types of color blindness on your images to ensure accessibility and inclusive design" />
-  <meta name="keywords" content="color blindness, accessibility, protanopia, deuteranopia, tritanopia, color vision, simulator" />
-  <meta property="og:title" content="Color Blindness Simulator" />
-  <meta property="og:description" content="Test your images for different types of color blindness" />
-  <meta property="og:type" content="website" />
   <title>Color Blindness Simulator</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    .zoom-container {
-      position: relative;
-      overflow: auto;
-      max-height: 70vh;
-      border: 1px solid #ddd;
-    }
-    canvas {
-      max-width: 100%;
-    }
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-    }
-    .modal canvas {
-      cursor: zoom-out;
-      max-height: 90vh;
-    }
-    .zoom-icon {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background-color: rgba(0, 0, 0, 0.6);
-      color: white;
-      padding: 4px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      pointer-events: none;
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
-  <main class="max-w-5xl mx-auto bg-white p-6 rounded shadow">
+  <div class="max-w-6xl mx-auto bg-white p-6 rounded shadow">
     <h1 class="text-3xl font-bold mb-6">Color Blindness Simulator</h1>
 
-    <div class="grid md:grid-cols-2 gap-6 mb-6">
-      <div>
-        <label for="dropZone" class="block mb-2 font-semibold">Upload or Drag & Drop an Image</label>
-        <div id="dropZone" 
-             class="border-2 border-dashed rounded p-6 text-center text-gray-500 cursor-pointer hover:border-blue-400"
-             role="button"
-             tabindex="0"
-             aria-label="Drop image here or click to upload">
-          <div class="flex flex-col items-center">
-            <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
-            <span>Drop image here or click to upload</span>
-            <span class="text-sm text-gray-400 mt-2">Supported formats: JPG, PNG, GIF (max 5MB)</span>
-          </div>
-          <input type="file" id="imageInput" accept="image/*" class="hidden" aria-label="Image upload input" />
-        </div>
+    <div id="dropZone" class="border-2 border-dashed border-gray-400 p-6 mb-4 text-center cursor-pointer hover:bg-gray-50">
+      <p class="text-gray-600">Click or drag & drop an image here</p>
+      <input type="file" id="imageInput" accept="image/*" class="hidden" />
+    </div>
 
-        <div class="mt-6">
-          <label for="filterSelect" class="block mb-2 font-semibold">Select Color Blindness Type</label>
-          <select id="filterSelect" class="block w-full p-2 border rounded" aria-label="Color blindness type selector">
-            <option value="">No simulation</option>
-            <option value="protanopia">Protanopia - Red-blind (strong)</option>
-            <option value="protanomaly">Protanomaly - Red-weak</option>
-            <option value="deuteranopia">Deuteranopia - Green-blind (strong)</option>
-            <option value="deuteranomaly">Deuteranomaly - Green-weak</option>
-            <option value="tritanopia">Tritanopia - Blue-blind (strong)</option>
-            <option value="tritanomaly">Tritanomaly - Blue-weak</option>
-            <option value="achromatopsia">Achromatopsia - Total color blindness</option>
-          </select>
-        </div>
+    <select id="filterSelect" class="mb-2 block p-2 border rounded w-full md:w-1/2">
+      <option value="">No simulation</option>
+      <option value="protanopia">Protanopia (Red-Blind)</option>
+      <option value="protanomaly">Protanomaly (Red-Weak)</option>
+      <option value="deuteranopia">Deuteranopia (Green-Blind)</option>
+      <option value="deuteranomaly">Deuteranomaly (Green-Weak)</option>
+      <option value="tritanopia">Tritanopia (Blue-Blind)</option>
+      <option value="tritanomaly">Tritanomaly (Blue-Weak)</option>
+      <option value="achromatopsia">Achromatopsia (Grayscale)</option>
+    </select>
 
-        <p id="description" class="mt-4 text-sm text-gray-700 italic" aria-live="polite"></p>
+    <div id="filterDescription" class="text-sm text-gray-600 mb-4 italic">Select a filter to see its description here.</div>
 
-        <div class="mt-6 flex gap-4">
-          <button id="downloadBtn" 
-                  class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                  disabled
-                  aria-label="Download simulated image">
-            Download Simulated Image
-          </button>
-          <button id="resetBtn"
-                  class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
-                  disabled
-                  aria-label="Reset all changes">
-            Reset
-          </button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="relative">
+        <h2 class="text-center text-lg font-semibold mb-1">Original Image</h2>
+        <canvas id="originalCanvas" class="w-full border"></canvas>
+        <div class="absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer shadow" title="Click to zoom" data-zoom="original">
+          🔍
         </div>
       </div>
-
-      <div>
-        <div class="space-y-6">
-          <div>
-            <label class="block mb-2 font-semibold">Original Image</label>
-            <div class="zoom-container" id="originalContainer">
-              <span class="zoom-icon" role="tooltip">🔍 Click to zoom</span>
-              <canvas id="originalCanvas" class="border" aria-label="Original image preview"></canvas>
-              <div id="originalPlaceholder" class="placeholder-message">
-                No image uploaded yet
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label class="block mb-2 font-semibold">Simulated Image</label>
-            <div class="zoom-container" id="simulatedContainer">
-              <span class="zoom-icon" role="tooltip">🔍 Click to zoom</span>
-              <canvas id="canvas" class="border" aria-label="Simulated image preview"></canvas>
-              <div id="simulatedPlaceholder" class="placeholder-message">
-                Simulation will appear here
-              </div>
-            </div>
-          </div>
+      <div class="relative">
+        <h2 class="text-center text-lg font-semibold mb-1">Simulated Image</h2>
+        <canvas id="simulatedCanvas" class="w-full border"></canvas>
+        <div class="absolute top-2 right-2 bg-white rounded-full p-1 cursor-pointer shadow" title="Click to zoom" data-zoom="simulated">
+          🔍
         </div>
       </div>
     </div>
-  </main>
 
-  <div id="modal" class="modal hidden" role="dialog" aria-label="Image preview">
-    <div class="modal-content">
-      <button class="modal-close" aria-label="Close preview">×</button>
-      <canvas id="modalCanvas"></canvas>
+    <div class="flex flex-wrap gap-2 mt-6">
+      <button id="downloadBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        Download Simulated Image
+      </button>
+      <button id="downloadAllBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+        Download All Filters as ZIP
+      </button>
     </div>
   </div>
 
-  <div id="loading" class="loading hidden" role="alert" aria-live="polite">
-    <div class="loading-spinner"></div>
-    <p>Processing image...</p>
+  <!-- Zoom Modal -->
+  <div id="zoomModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
+    <img id="zoomImage" class="max-w-full max-h-full" alt="Zoomed view" />
   </div>
 
   <script src="app.js"></script>
